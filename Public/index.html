@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>🚨 SOS Center Map</title>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .team-item {
+      padding: 8px;
+      margin-bottom: 8px;
+      border-left: 4px solid #0066cc;
+      background-color: #e6f2ff;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .team-time {
+      font-size: 0.8em;
+      color: #666;
+      text-align: right;
+    }
+    
+    .assign-btn {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin: 2px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    
+    .assign-btn:hover {
+      background-color: #45a049;
+    }
+    
+    .assign-btn.assigned {
+      background-color: #999;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="alerts">
+    <h2>🚨 Live SOS Alerts</h2>
+    <div id="alertsList"></div>
+    
+    <h2>👥 Response Teams</h2>
+    <div id="teamsList"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  
+  <script>
+   let map;
+   let socket;
+   // Store markers in a global object to reference them later
+   const markers = {};
+   // Store team markers separately
+   const teamMarkers = {};
+   // Store available teams
+   const teams = {};
+
+   // Global function to assign emergency to a team - MOVED OUTSIDE initMap
+   function assignEmergency(alertId, teamId) {
+     console.log(`Attempting to assign emergency ${alertId} to team ${teamId}`);
+     
+     const emergency = markers[alertId];
+     if (!emergency) {
+       console.error('Emergency not found:', alertId);
+       return;
+     }
+     
+     // Get emergency data
+     const emergencyData = emergency.data;
+     console.log('Emergency data:', emergencyData);
+     
+     // Emit socket event to assign the emergency
+     const assignmentData = {
+       teamId: teamId,
+       emergencyId: alertId,
+       latitude: emergencyData.latitude,
+       longitude: emergencyData.longitude,
+       type: emergencyData.type
+     };
+     
+     console.log('Emitting assignment:', assignmentData);
+     socket.emit('assignEmergency', assignmentData);
+     
+     // Update UI to show assignment
+     const assignDiv = document.getElementById(`assign-${alertId}`);
+     if (assignDiv) {
+       assignDiv.innerHTML = `<span style="color: green; font-weight: bold;">✓ Assigned to ${teamId}</span>`;
+     }
+     
+     // Add assignment info to marker popup
+     const content = emergency.infowindow.getContent() + `<br><b style="color: green;">Assigned to: ${teamId}</b>`;
+     emergency.infowindow.setContent(content);
+     
+     // Alert the operator
+     alert(`Emergency has been assigned to ${teamId}!`);
+   }
+
+   function initMap() {
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: 5.6037, lng: -0.1870 },
+        zoom: 7,
+      });
+
+    // Setup Socket Connection
+    socket = io();
+    
+    // Add connection event listeners for debugging
+    socket.on('connect', () => {
+      console.log('✅ Connected to server');
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('❌ Disconnected from server');
+    });
+
+    // Listen for SOS alerts
+    socket.on('sosAlert', (data) => {
+      console.log('🚨 SOS Alert Received:', data);
+
+      // Generate a unique ID for this alert
+      const alertId = `alert-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      
+      const marker = new google.maps.Marker({
+          position: { lat: data.latitude, lng: data.longitude },
+          map: map,
+          title: data.type
+        });
+
+        const infowindow = new google.maps.InfoWindow({
+          content: `<b>${data.type}</b><br>Latitude: ${data.latitude}<br>Longitude: ${data.longitude}`
+        });
+
+        marker.addListener('click', () => {
+          infowindow.open(map, marker);
+          map.setZoom(15);
+          map.panTo(marker.getPosition());
+        });
+
+        // Store the marker with its ID and data
+        markers[alertId] = {
+          marker: marker,
+          infowindow: infowindow,
+          data: data
+        };
+
+        // Auto-open popup
+        infowindow.open(map, marker);
+
+        // Add to Alerts List with assign buttons
+        const alertsList = document.getElementById('alertsList');
+        const item = document.createElement('div');
+        item.className = 'alert-item';
+        item.dataset.id = alertId;
+        
+        item.innerHTML = `
+          <b>Type:</b> ${data.type} <br>
+          <b>Lat:</b> ${data.latitude.toFixed(4)} <br>
+          <b>Lng:</b> ${data.longitude.toFixed(4)} 
+          <div class="alert-time">${new Date().toLocaleTimeString()}</div>
+          <div class="assign-options" id="assign-${alertId}">
+            <button class="assign-btn" onclick="assignEmergency('${alertId}', 'Team-A')">Assign to Team-A</button>
+          </div>
+        `;
+        
+        // Add click event to the alert item (excluding buttons)
+        item.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'BUTTON') {
+            const markerInfo = markers[alertId];
+            if (markerInfo) {
+              map.setZoom(16);
+              map.panTo(markerInfo.marker.getPosition());
+              markerInfo.infowindow.open(map, markerInfo.marker);
+            }
+          }
+        });
+        
+        alertsList.prepend(item);
+      });
+      
+      // Listen for team location updates
+      socket.on('teamLocationUpdate', (data) => {
+        console.log('📍 Team Location Update Received:', data);
+        
+        const teamId = data.teamId;
+        const position = { lat: data.latitude, lng: data.longitude };
+        
+        // Store team info
+        teams[teamId] = {
+          id: teamId,
+          position: position,
+          lastUpdate: new Date()
+        };
+        
+        // Check if we already have a marker for this team
+        if (teamMarkers[teamId]) {
+          // Update existing marker position
+          teamMarkers[teamId].marker.setPosition(position);
+          
+          // Update info window content
+          teamMarkers[teamId].infowindow.setContent(
+            `<b>Team: ${teamId}</b><br>` +
+            `Latitude: ${data.latitude}<br>` +
+            `Longitude: ${data.longitude}<br>` +
+            `Updated: ${new Date().toLocaleTimeString()}`
+          );
+          
+          // Update the team item in the list
+          const teamItem = document.querySelector(`.team-item[data-id="${teamId}"]`);
+          if (teamItem) {
+            teamItem.querySelector('.team-time').textContent = new Date().toLocaleTimeString();
+            teamItem.querySelector('.team-lat').textContent = data.latitude.toFixed(4);
+            teamItem.querySelector('.team-lng').textContent = data.longitude.toFixed(4);
+          }
+        } else {
+          // Create a new marker for this team
+          const marker = new google.maps.Marker({
+            position: position,
+            map: map,
+            title: `Team: ${teamId}`,
+            icon: {
+              url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+              scaledSize: new google.maps.Size(32, 32)
+            }
+          });
+          
+          const infowindow = new google.maps.InfoWindow({
+            content: `<b>Team: ${teamId}</b><br>` +
+                    `Latitude: ${data.latitude}<br>` +
+                    `Longitude: ${data.longitude}<br>` +
+                    `Updated: ${new Date().toLocaleTimeString()}`
+          });
+          
+          marker.addListener('click', () => {
+            infowindow.open(map, marker);
+            map.setZoom(15);
+            map.panTo(marker.getPosition());
+          });
+          
+          // Store the team marker
+          teamMarkers[teamId] = {
+            marker: marker,
+            infowindow: infowindow
+          };
+          
+          // Add to Teams List
+          const teamsList = document.getElementById('teamsList');
+          const item = document.createElement('div');
+          item.className = 'team-item';
+          item.dataset.id = teamId;
+          item.innerHTML = `
+            <b>Team:</b> ${teamId} <br>
+            <b>Lat:</b> <span class="team-lat">${data.latitude.toFixed(4)}</span> <br>
+            <b>Lng:</b> <span class="team-lng">${data.longitude.toFixed(4)}</span>
+            <div class="team-time">${new Date().toLocaleTimeString()}</div>
+          `;
+          
+          // Add click event to center map on team
+          item.addEventListener('click', () => {
+            map.setZoom(16);
+            map.panTo(marker.getPosition());
+            infowindow.open(map, marker);
+          });
+          
+          teamsList.appendChild(item);
+        }
+      });
+      
+      // Listen for assignment confirmations
+      socket.on('assignmentConfirmed', (data) => {
+        console.log('✅ Assignment confirmed:', data);
+      });
+    }
+  </script>
+   <script async
+   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDim4GDvBKQSRmV8RGQWbGx3LyecuRFUAk&callback=initMap">
+ </script>
+</body>
+</html>
