@@ -23,11 +23,22 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: [6, 'Password must be at least 6 characters']
   },
-  medicalHistory: { 
-    type: String,
-    trim: true,
-    default: ''
-  },
+  medicalHistory: {
+  type: Object,
+  default: {
+    allergies: '',
+    chronicDiseases: '',
+    bloodType: '',
+    medications: '',
+    previousSurgeries: '',
+    emergencyContact: {
+      name: '',
+      relationship: '',
+      phone: ''
+    }
+  }
+},
+
   isActive: {
     type: Boolean,
     default: true

@@ -15,7 +15,8 @@ const defaultCenter = {
 
 function App() {
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: 'AIzaSyDim4GDvBKQSRmV8RGQWbGx3LyecuRFUAk', // Replace with your key
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_API_KEY,
+ 
   });
 
   const [socket, setSocket] = useState(null);
