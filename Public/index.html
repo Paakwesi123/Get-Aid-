@@ -1,286 +1,1711 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🚨 SOS Center Map</title>
+  <title>🚨 Emergency Command Center - 911 Dashboard</title>
   <meta charset="utf-8" />
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'emergency-red': '#dc2626',
+            'police-blue': '#1e40af',
+            'fire-orange': '#ea580c',
+            'ambulance-green': '#059669',
+            'command-dark': '#1f2937',
+            'command-darker': '#111827',
+            primary: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              200: '#bae6fd',
+              300: '#7dd3fc',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              700: '#0369a1',
+              800: '#075985',
+              900: '#0c4a6e',
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    .team-item {
-      padding: 8px;
+    .dashboard-card {
+      background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+    }
+    
+    .dashboard-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+
+    .emergency-item {
+      padding: 16px;
       margin-bottom: 8px;
-      border-left: 4px solid #0066cc;
-      background-color: #e6f2ff;
-      border-radius: 4px;
+      border-left: 4px solid #dc2626;
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-radius: 8px;
       cursor: pointer;
+      transition: all 0.3s ease;
+      border: 1px solid #fecaca;
     }
     
-    .team-time {
-      font-size: 0.8em;
-      color: #666;
-      text-align: right;
+    .emergency-item:hover {
+      background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
     }
     
-    .assign-btn {
-      background-color: #4CAF50;
-      color: white;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      margin: 2px;
+    .team-item {
+      padding: 12px;
+      margin-bottom: 8px;
+      border-left: 4px solid #1e40af;
+      background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 12px;
+      transition: all 0.3s ease;
+      border: 1px solid #bfdbfe;
     }
     
-    .assign-btn:hover {
-      background-color: #45a049;
+    .team-item:hover {
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
     }
     
-    .assign-btn.assigned {
-      background-color: #999;
-      cursor: not-allowed;
+    .team-item.busy {
+      border-left-color: #f59e0b;
+      background: linear-gradient(135deg, #fefbf2 0%, #fef3c7 100%);
+      border-color: #fde68a;
+    }
+    
+    .team-item.offline {
+      border-left-color: #dc2626;
+      background: linear-gradient(135deg, #fefbf2 0%, #fee2e2 100%);
+      border-color: #fecaca;
+    }
+
+    .history-item {
+      padding: 14px;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+      border-radius: 8px;
+      border: 1px solid #e5e7eb;
+      transition: all 0.3s ease;
+    }
+
+    .history-item:hover {
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card {
+      background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 100%);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.3);
+      transition: all 0.3s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    .priority-critical { background: #7f1d1d; color: white; }
+    .priority-high { background: #fee2e2; color: #991b1b; }
+    .priority-medium { background: #fef3c7; color: #92400e; }
+    .priority-low { background: #ecfdf5; color: #065f46; }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-active { background: #dcfce7; color: #166534; }
+    .status-busy { background: #fef3c7; color: #92400e; }
+    .status-offline { background: #fee2e2; color: #991b1b; }
+    .status-completed { background: #e0f2fe; color: #0369a1; }
+
+    .pulse-ring {
+      animation: pulse-ring 2s infinite;
+    }
+
+    @keyframes pulse-ring {
+      0% { transform: scale(.33); }
+      80%, 100% { opacity: 0; }
+    }
+
+    .loading-spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #f3f3f3;
+      border-radius: 50%;
+      border-top-color: #3498db;
+      animation: spin 1s ease-in-out infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .tab-button {
+      padding: 12px 24px;
+      border-radius: 8px 8px 0 0;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab-button.active {
+      background: white;
+      border-bottom-color: #dc2626;
+      color: #dc2626;
+    }
+
+    .tab-button:not(.active) {
+      background: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .tab-button:not(.active):hover {
+      background: #e5e7eb;
+      color: #374151;
+    }
+
+    .command-header {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      border-bottom: 4px solid #dc2626;
+    }
+
+    .glass-effect {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .blink {
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0.3; }
+    }
+
+    .scrollable-content {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .scrollable-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .scrollable-content::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    .scrollable-content::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 10px;
+    }
+
+    .scrollable-content::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
     }
   </style>
 </head>
-<body>
-  <div id="map"></div>
-  <div id="alerts">
-    <h2>🚨 Live SOS Alerts</h2>
-    <div id="alertsList"></div>
-    
-    <h2>👥 Response Teams</h2>
-    <div id="teamsList"></div>
+<body class="bg-gray-100 min-h-screen">
+  
+  <!-- Command Header -->
+  <header class="command-header shadow-2xl">
+    <div class="max-w-full mx-auto px-6 py-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="text-4xl text-red-500">🚨</div>
+          <div>
+            <h1 class="text-3xl font-bold text-white">Emergency Command Center</h1>
+            <p class="text-gray-300">Real-Time Emergency Response Dashboard</p>
+          </div>
+        </div>
+        
+        <div class="flex items-center space-x-6">
+          <div class="glass-effect px-4 py-2 rounded-lg">
+            <div class="flex items-center space-x-2 text-white">
+              <div id="status-indicator" class="w-3 h-3 bg-red-500 rounded-full blink"></div>
+              <span id="connection-status">Connecting...</span>
+            </div>
+          </div>
+          
+          <div class="text-right text-white">
+            <p class="text-sm text-gray-300">Current Time</p>
+            <p id="current-time" class="text-lg font-bold">--:--:--</p>
+          </div>
+          
+          <div class="text-right text-white">
+            <p class="text-sm text-gray-300">Last Update</p>
+            <p id="last-updated" class="text-lg font-bold">--:--:--</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="max-w-full mx-auto px-6 py-6">
+    <!-- Top Statistics Bar -->
+    <div class="metric-grid mb-8">
+      <!-- Active Emergencies -->
+      <div class="stat-card bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-red-100 text-sm font-medium uppercase tracking-wide">Active Emergencies</p>
+            <p id="active-emergencies" class="text-4xl font-bold">0</p>
+            <p class="text-red-200 text-xs">Currently Being Handled</p>
+          </div>
+          <div class="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Response Teams -->
+      <div class="stat-card bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-blue-100 text-sm font-medium uppercase tracking-wide">Response Teams</p>
+            <p id="total-teams" class="text-4xl font-bold">0</p>
+            <p class="text-blue-200 text-xs">Online & Available</p>
+          </div>
+          <div class="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Average Response Time -->
+      <div class="stat-card bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-green-100 text-sm font-medium uppercase tracking-wide">Avg Response Time</p>
+            <p id="avg-response" class="text-4xl font-bold">0m</p>
+            <p class="text-green-200 text-xs">Target: &lt;4 minutes</p>
+          </div>
+          <div class="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Total Calls -->
+      <div class="stat-card bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-purple-100 text-sm font-medium uppercase tracking-wide">Today's Calls</p>
+            <p id="daily-calls" class="text-4xl font-bold">0</p>
+            <p class="text-purple-200 text-xs">Since 00:00 Hours</p>
+          </div>
+          <div class="bg-white/20 p-4 rounded-lg backdrop-blur-sm">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- Map Section -->
+      <div class="lg:col-span-8 dashboard-card rounded-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-bold text-gray-900 flex items-center space-x-2">
+            <svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-1.447-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            <span>Live Emergency Map</span>
+          </h2>
+          <div class="flex space-x-2">
+            <button id="refresh-map" class="px-3 py-1 bg-blue-500 text-white rounded-lg text-sm hover:bg-blue-600 transition-colors">
+              🔄 Refresh
+            </button>
+            <button id="center-map" class="px-3 py-1 bg-green-500 text-white rounded-lg text-sm hover:bg-green-600 transition-colors">
+              📍 Center
+            </button>
+          </div>
+        </div>
+        <div id="map" class="w-full h-96 rounded-lg border-2 border-gray-200"></div>
+      </div>
+
+      <!-- Side Panel -->
+      <div class="lg:col-span-4 space-y-6">
+        
+        <!-- Tab Navigation -->
+        <div class="dashboard-card rounded-xl overflow-hidden">
+          <div class="flex bg-gray-50">
+            <button class="tab-button active flex-1" onclick="switchTab('live')">
+              <span class="flex items-center justify-center space-x-2">
+                <div class="w-2 h-2 bg-red-500 rounded-full pulse"></div>
+                <span>Live</span>
+              </span>
+            </button>
+            <button class="tab-button flex-1" onclick="switchTab('teams')">
+              <span class="flex items-center justify-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span>Teams</span>
+              </span>
+            </button>
+            <button class="tab-button flex-1" onclick="switchTab('history')">
+              <span class="flex items-center justify-center space-x-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>History</span>
+              </span>
+            </button>
+          </div>
+          
+          <!-- Tab Contents -->
+          <div class="p-6">
+            <!-- Live Emergencies Tab -->
+            <div id="live-tab" class="tab-content">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Active Emergencies</h3>
+                <span id="live-count" class="status-badge bg-red-500 text-white">0</span>
+              </div>
+              <div id="live-emergencies" class="scrollable-content space-y-3">
+                <p class="text-gray-500 text-center py-8">No active emergencies</p>
+              </div>
+            </div>
+
+            <!-- Teams Tab -->
+            <div id="teams-tab" class="tab-content hidden">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Response Teams</h3>
+                <span id="teams-count" class="status-badge bg-blue-500 text-white">0</span>
+              </div>
+              <div id="teams-list" class="scrollable-content space-y-3">
+                <p class="text-gray-500 text-center py-8">No teams online</p>
+              </div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history-tab" class="tab-content hidden">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-900">Emergency History</h3>
+                <div class="flex space-x-2">
+                  <select id="history-filter" class="text-xs border rounded px-2 py-1">
+                    <option value="all">All Types</option>
+                    <option value="crime">Crime</option>
+                    <option value="medical">Medical</option>
+                    <option value="fire">Fire</option>
+                    <option value="accident">Accident</option>
+                  </select>
+                  <button id="clear-history" class="text-xs bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <div id="history-list" class="scrollable-content space-y-3">
+                <p class="text-gray-500 text-center py-8">No history available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Analytics Dashboard -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      
+      <!-- Emergency Types Chart -->
+      <div class="dashboard-card rounded-xl p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+          <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span>Emergency Types (Today)</span>
+        </h3>
+        <div class="chart-container">
+          <canvas id="emergencyTypesChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Response Times Chart -->
+      <div class="dashboard-card rounded-xl p-6">
+        <h3 class="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+          <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+          <span>Response Times (Last 24h)</span>
+        </h3>
+        <div class="chart-container">
+          <canvas id="responseTimesChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Team Performance Metrics -->
+    <div class="dashboard-card rounded-xl p-6 mt-6">
+      <h3 class="text-lg font-bold text-gray-900 mb-6 flex items-center space-x-2">
+        <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+        </svg>
+        <span>Team Performance Dashboard</span>
+      </h3>
+      <div id="team-performance" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Performance metrics will be populated here -->
+      </div>
+    </div>
+
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   
   <script>
-   let map;
-   let socket;
-   // Store markers in a global object to reference them later
-   const markers = {};
-   // Store team markers separately
-   const teamMarkers = {};
-   // Store available teams
-   const teams = {};
+    // Global variables
+    let map;
+    let socket;
+    let currentTab = 'live';
+    const markers = {};
+    const teamMarkers = {};
+    const teams = {};
+    const emergencies = {};
+    const emergencyHistory = [];
+    const teamPerformance = {};
+    
+    // Charts
+    let emergencyTypesChart;
+    let responseTimesChart;
+    
+    // Statistics
+    let dailyStats = {
+      totalEmergencies: 0,
+      activeEmergencies: 0,
+      totalTeams: 0,
+      completedToday: 0,
+      responseTimeTotal: 0,
+      responseCount: 0,
+      emergencyTypes: {
+        crime: 0,
+        medical: 0,
+        fire: 0,
+        accident: 0,
+        other: 0
+      }
+    };
 
-   // Global function to assign emergency to a team - MOVED OUTSIDE initMap
-   function assignEmergency(alertId, teamId) {
-     console.log(`Attempting to assign emergency ${alertId} to team ${teamId}`);
-     
-     const emergency = markers[alertId];
-     if (!emergency) {
-       console.error('Emergency not found:', alertId);
-       return;
-     }
-     
-     // Get emergency data
-     const emergencyData = emergency.data;
-     console.log('Emergency data:', emergencyData);
-     
-     // Emit socket event to assign the emergency
-     const assignmentData = {
-       teamId: teamId,
-       emergencyId: alertId,
-       latitude: emergencyData.latitude,
-       longitude: emergencyData.longitude,
-       type: emergencyData.type
-     };
-     
-     console.log('Emitting assignment:', assignmentData);
-     socket.emit('assignEmergency', assignmentData);
-     
-     // Update UI to show assignment
-     const assignDiv = document.getElementById(`assign-${alertId}`);
-     if (assignDiv) {
-       assignDiv.innerHTML = `<span style="color: green; font-weight: bold;">✓ Assigned to ${teamId}</span>`;
-     }
-     
-     // Add assignment info to marker popup
-     const content = emergency.infowindow.getContent() + `<br><b style="color: green;">Assigned to: ${teamId}</b>`;
-     emergency.infowindow.setContent(content);
-     
-     // Alert the operator
-     alert(`Emergency has been assigned to ${teamId}!`);
-   }
+    // Initialize the application
+    function initApp() {
+      initMap();
+      initCharts();
+      updateClock();
+      setInterval(updateClock, 1000);
+      
+      // Event listeners
+      document.getElementById('refresh-map').addEventListener('click', refreshMapView);
+      document.getElementById('center-map').addEventListener('click', centerMapToGhana);
+      document.getElementById('clear-history').addEventListener('click', clearHistory);
+      document.getElementById('history-filter').addEventListener('change', filterHistory);
+    }
 
-   function initMap() {
+    // Initialize Google Maps
+    function initMap() {
       map = new google.maps.Map(document.getElementById("map"), {
         center: { lat: 5.6037, lng: -0.1870 },
         zoom: 7,
+        styles: [
+          {
+            featureType: "water",
+            elementType: "geometry",
+            stylers: [{ color: "#e9e9e9" }, { lightness: 17 }]
+          },
+          {
+            featureType: "landscape",
+            elementType: "geometry",
+            stylers: [{ color: "#f5f5f5" }, { lightness: 20 }]
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.fill",
+            stylers: [{ color: "#ffffff" }, { lightness: 17 }]
+          },
+          {
+            featureType: "road.highway",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#ffffff" }, { lightness: 29 }, { weight: 0.2 }]
+          },
+          {
+            featureType: "road.arterial",
+            elementType: "geometry",
+            stylers: [{ color: "#ffffff" }, { lightness: 18 }]
+          },
+          {
+            featureType: "road.local",
+            elementType: "geometry",
+            stylers: [{ color: "#ffffff" }, { lightness: 16 }]
+          },
+          {
+            featureType: "poi",
+            elementType: "geometry",
+            stylers: [{ color: "#f5f5f5" }, { lightness: 21 }]
+          },
+          {
+            featureType: "poi.park",
+            elementType: "geometry",
+            stylers: [{ color: "#dedede" }, { lightness: 21 }]
+          },
+          {
+            elementType: "labels.text.stroke",
+            stylers: [{ visibility: "on" }, { color: "#ffffff" }, { lightness: 16 }]
+          },
+          {
+            elementType: "labels.text.fill",
+            stylers: [{ saturation: 36 }, { color: "#333333" }, { lightness: 40 }]
+          },
+          {
+            elementType: "labels.icon",
+            stylers: [{ visibility: "off" }]
+          },
+          {
+            featureType: "transit",
+            elementType: "geometry",
+            stylers: [{ color: "#f2f2f2" }, { lightness: 19 }]
+          },
+          {
+            featureType: "administrative",
+            elementType: "geometry.fill",
+            stylers: [{ color: "#fefefe" }, { lightness: 20 }]
+          },
+          {
+            featureType: "administrative",
+            elementType: "geometry.stroke",
+            stylers: [{ color: "#fefefe" }, { lightness: 17 }, { weight: 1.2 }]
+          }
+        ]
       });
 
-    // Setup Socket Connection
-    socket = io();
-    
-    // Add connection event listeners for debugging
-    socket.on('connect', () => {
-      console.log('✅ Connected to server');
-    });
-    
-    socket.on('disconnect', () => {
-      console.log('❌ Disconnected from server');
-    });
+      initSocketConnection();
+    }
 
-    // Listen for SOS alerts
-    socket.on('sosAlert', (data) => {
-      console.log('🚨 SOS Alert Received:', data);
+    // Initialize charts
+    function initCharts() {
+      // Emergency Types Pie Chart
+      const ctx1 = document.getElementById('emergencyTypesChart').getContext('2d');
+      emergencyTypesChart = new Chart(ctx1, {
+        type: 'doughnut',
+        data: {
+          labels: ['Crime', 'Medical', 'Fire', 'Accident', 'Other'],
+          datasets: [{
+            data: [0, 0, 0, 0, 0],
+            backgroundColor: [
+              '#ef4444',
+              '#10b981',
+              '#f97316',
+              '#3b82f6',
+              '#8b5cf6'
+            ],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 20,
+                usePointStyle: true,
+                font: {
+                  size: 12
+                }
+              }
+            }
+          }
+        }
+      });
 
-      // Generate a unique ID for this alert
-      const alertId = `alert-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+      // Response Times Line Chart
+      const ctx2 = document.getElementById('responseTimesChart').getContext('2d');
+      responseTimesChart = new Chart(ctx2, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Response Time (minutes)',
+            data: [],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#10b981',
+            pointBorderColor: '#ffffff',
+            pointBorderWidth: 2,
+            pointRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Minutes'
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Time'
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize Socket Connection
+    function initSocketConnection() {
+      socket = io();
       
+      socket.on('connect', () => {
+        console.log('✅ Connected to Emergency Command Center');
+        updateConnectionStatus(true);
+        showNotification('Connected to Emergency Command Center', 'success');
+      });
+      
+      socket.on('disconnect', () => {
+        console.log('❌ Disconnected from Emergency Command Center');
+        updateConnectionStatus(false);
+        showNotification('Lost connection to Emergency Command Center', 'error');
+      });
+
+      // Listen for SOS alerts
+      socket.on('sosAlert', handleSOSAlert);
+      
+      // Listen for team location updates
+      socket.on('teamLocationUpdate', handleTeamLocationUpdate);
+      
+      // Listen for assignment confirmations
+      socket.on('assignmentConfirmed', handleAssignmentConfirmed);
+      
+      // Listen for assignment errors
+      socket.on('assignmentError', handleAssignmentError);
+      
+      // Listen for team disconnections
+      socket.on('teamDisconnected', handleTeamDisconnected);
+      
+      // Listen for emergency completed
+      socket.on('emergencyCompleted', handleEmergencyCompleted);
+    }
+
+    // Handle SOS Alert
+    function handleSOSAlert(data) {
+      console.log('🚨 Emergency Alert Received:', data);
+
+      const alertId = data.emergencyId || data.id || generateUniqueId();
+      const emergencyType = (data.type || 'other').toLowerCase();
+      
+      // Update statistics
+      dailyStats.totalEmergencies++;
+      dailyStats.activeEmergencies++;
+      dailyStats.emergencyTypes[emergencyType] = (dailyStats.emergencyTypes[emergencyType] || 0) + 1;
+      updateStatsDisplay();
+      updateEmergencyTypesChart();
+
+      // Create map marker
       const marker = new google.maps.Marker({
-          position: { lat: data.latitude, lng: data.longitude },
+        position: { lat: data.latitude, lng: data.longitude },
+        map: map,
+        title: `${data.type} Emergency`,
+        animation: google.maps.Animation.BOUNCE,
+        icon: {
+          url: getEmergencyIcon(emergencyType),
+          scaledSize: new google.maps.Size(40, 40)
+        }
+      });
+
+      // Create info window
+      const infoContent = createEmergencyInfoWindow(data, alertId);
+      const infowindow = new google.maps.InfoWindow({ content: infoContent });
+
+      marker.addListener('click', () => {
+        infowindow.open(map, marker);
+        map.setZoom(15);
+        map.panTo(marker.getPosition());
+      });
+
+      // Store emergency data
+      emergencies[alertId] = {
+        marker: marker,
+        infowindow: infowindow,
+        data: data,
+        timestamp: new Date(),
+        status: 'active'
+      };
+
+      // Auto-open info window for new emergencies
+      setTimeout(() => {
+        infowindow.open(map, marker);
+      }, 500);
+
+      // Add to live emergencies list
+      addToLiveEmergencies(alertId, data);
+      
+      // Play alert sound (if browser allows)
+      playAlertSound();
+      
+      showNotification(`New ${data.type} emergency reported`, 'warning');
+    }
+
+    // Handle Team Location Update
+    function handleTeamLocationUpdate(data) {
+      console.log('📍 Team Update:', data);
+      
+      const teamId = data.teamId;
+      const position = { lat: data.latitude, lng: data.longitude };
+      
+      // Update team data
+      teams[teamId] = {
+        ...teams[teamId],
+        id: teamId,
+        position: position,
+        teamType: data.teamType,
+        status: data.status || 'available',
+        lastUpdate: new Date()
+      };
+      
+      // Initialize team performance if not exists
+      if (!teamPerformance[teamId]) {
+        teamPerformance[teamId] = {
+          totalAssignments: 0,
+          completedCases: 0,
+          averageResponseTime: 0,
+          responseTimeTotal: 0
+        };
+      }
+      
+      dailyStats.totalTeams = Object.keys(teams).length;
+      updateStatsDisplay();
+      
+      // Update map marker
+      updateTeamMarker(teamId, data);
+      
+      // Update teams list
+      updateTeamsList();
+    }
+
+    // Handle Assignment Confirmed
+    function handleAssignmentConfirmed(data) {
+      console.log('✅ Assignment Confirmed:', data);
+      showNotification(`Emergency assigned to ${data.assignedTeams.join(', ')}`, 'success');
+      
+      // Update team performance
+      data.assignedTeams.forEach(teamId => {
+        if (teamPerformance[teamId]) {
+          teamPerformance[teamId].totalAssignments++;
+        }
+      });
+      
+      // Update emergency status in UI
+      updateEmergencyAssignmentStatus(data);
+      updateTeamPerformanceDisplay();
+    }
+
+    // Handle Assignment Error
+    function handleAssignmentError(data) {
+      console.error('❌ Assignment Error:', data);
+      showNotification(data.error || 'Assignment failed', 'error');
+      
+      // Reset assignment UI
+      resetAssignmentUI();
+    }
+
+    // Handle Team Disconnected
+    function handleTeamDisconnected(data) {
+      console.log('👋 Team Offline:', data.teamId);
+      
+      const teamId = data.teamId;
+      
+      // Remove team data
+      delete teams[teamId];
+      
+      // Remove map marker
+      if (teamMarkers[teamId]) {
+        teamMarkers[teamId].marker.setMap(null);
+        delete teamMarkers[teamId];
+      }
+      
+      dailyStats.totalTeams = Object.keys(teams).length;
+      updateStatsDisplay();
+      updateTeamsList();
+      
+      showNotification(`Team ${teamId} went offline`, 'info');
+    }
+
+    // Handle Emergency Completed
+    function handleEmergencyCompleted(data) {
+      console.log('✅ Emergency Resolved:', data);
+      
+      const emergencyId = data.emergencyId;
+      const emergency = emergencies[emergencyId];
+      
+      if (emergency) {
+        // Calculate response time
+        const responseTime = Math.floor((new Date() - emergency.timestamp) / (1000 * 60));
+        
+        // Update statistics
+        dailyStats.activeEmergencies--;
+        dailyStats.completedToday++;
+        dailyStats.responseTimeTotal += responseTime;
+        dailyStats.responseCount++;
+        
+        // Update team performance
+        if (data.teamId && teamPerformance[data.teamId]) {
+          const team = teamPerformance[data.teamId];
+          team.completedCases++;
+          team.responseTimeTotal += responseTime;
+          team.averageResponseTime = Math.floor(team.responseTimeTotal / team.completedCases);
+        }
+        
+        // Add to history
+        addToHistory({
+          ...emergency.data,
+          emergencyId: emergencyId,
+          resolvedAt: new Date(),
+          responseTime: responseTime,
+          assignedTeam: data.teamId,
+          status: 'completed'
+        });
+        
+        // Remove from active emergencies
+        emergency.marker.setMap(null);
+        delete emergencies[emergencyId];
+        
+        // Remove from live list
+        removeFromLiveEmergencies(emergencyId);
+        
+        updateStatsDisplay();
+        updateResponseTimesChart(responseTime);
+        updateTeamPerformanceDisplay();
+      }
+      
+      showNotification(`Emergency resolved by ${data.teamId} in ${Math.floor((new Date() - emergency.timestamp) / (1000 * 60))} minutes`, 'success');
+    }
+
+    // UI Helper Functions
+    function updateConnectionStatus(connected) {
+      const statusEl = document.getElementById('connection-status');
+      const indicatorEl = document.getElementById('status-indicator');
+      
+      if (connected) {
+        statusEl.textContent = 'CONNECTED';
+        indicatorEl.className = 'w-3 h-3 bg-green-500 rounded-full';
+      } else {
+        statusEl.textContent = 'DISCONNECTED';
+        indicatorEl.className = 'w-3 h-3 bg-red-500 rounded-full blink';
+      }
+    }
+
+    function updateStatsDisplay() {
+      document.getElementById('active-emergencies').textContent = dailyStats.activeEmergencies;
+      document.getElementById('total-teams').textContent = dailyStats.totalTeams;
+      document.getElementById('daily-calls').textContent = dailyStats.totalEmergencies;
+      
+      const avgResponse = dailyStats.responseCount > 0 ? 
+        Math.floor(dailyStats.responseTimeTotal / dailyStats.responseCount) : 0;
+      document.getElementById('avg-response').textContent = `${avgResponse}m`;
+      
+      document.getElementById('live-count').textContent = dailyStats.activeEmergencies;
+      document.getElementById('teams-count').textContent = dailyStats.totalTeams;
+      
+      document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+    }
+
+    function updateClock() {
+      document.getElementById('current-time').textContent = new Date().toLocaleTimeString();
+    }
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      
+      // Update tab buttons
+      document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      document.querySelector(`[onclick="switchTab('${tabName}')"]`).classList.add('active');
+      
+      // Update tab content
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+      });
+      document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+    }
+
+    // Emergency Management Functions
+    function addToLiveEmergencies(alertId, data) {
+      const container = document.getElementById('live-emergencies');
+      
+      // Remove empty state
+      if (container.querySelector('.text-center')) {
+        container.innerHTML = '';
+      }
+      
+      const item = createEmergencyListItem(alertId, data);
+      container.insertBefore(item, container.firstChild);
+    }
+
+    function removeFromLiveEmergencies(alertId) {
+      const item = document.querySelector(`[data-emergency-id="${alertId}"]`);
+      if (item) {
+        item.remove();
+      }
+      
+      // Add empty state if no emergencies
+      const container = document.getElementById('live-emergencies');
+      if (container.children.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-8">No active emergencies</p>';
+      }
+    }
+
+    function createEmergencyListItem(alertId, data) {
+      const item = document.createElement('div');
+      item.className = 'emergency-item';
+      item.dataset.emergencyId = alertId;
+      
+      const emergencyType = (data.type || 'other').toLowerCase();
+      const priorityClass = getPriorityClass(data.priority);
+      
+      item.innerHTML = `
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex items-center space-x-2">
+            <span class="text-lg">${getEmergencyEmoji(emergencyType)}</span>
+            <div>
+              <span class="inline-block px-2 py-1 rounded text-xs font-medium bg-red-100 text-red-800">
+                ${data.type.toUpperCase()}
+              </span>
+              <span class="inline-block px-2 py-1 rounded text-xs font-medium ml-1 ${priorityClass}">
+                ${(data.priority || 'HIGH').toUpperCase()}
+              </span>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500 text-right">
+            <div>${new Date(data.timestamp).toLocaleTimeString()}</div>
+            <div class="text-xs text-blue-600">#${alertId.slice(-6)}</div>
+          </div>
+        </div>
+        
+        <div class="text-sm text-gray-700 mb-3">
+          <div><strong>Location:</strong> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</div>
+        </div>
+        
+        <div class="nearby-teams" id="teams-${alertId}">
+          ${createNearbyTeamsHTML(alertId, data.nearbyTeams || [])}
+        </div>
+      `;
+      
+      item.addEventListener('click', (e) => {
+        if (e.target.tagName !== 'BUTTON') {
+          focusOnEmergency(alertId);
+        }
+      });
+      
+      return item;
+    }
+
+    function createNearbyTeamsHTML(alertId, nearbyTeams) {
+      if (!nearbyTeams || nearbyTeams.length === 0) {
+        return '<div class="text-xs text-gray-500 p-2 bg-gray-50 rounded">⚠️ No available teams nearby</div>';
+      }
+      
+      return `
+        <div class="text-xs font-semibold text-gray-600 mb-2">📍 Available Teams:</div>
+        <div class="flex flex-wrap gap-1">
+          ${nearbyTeams.map(team => `
+            <button class="text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                    onclick="assignEmergency('${alertId}', '${team.teamId}')">
+              ${getTeamTypeEmoji(team.teamType)} ${team.teamId}
+              <span class="text-xs opacity-75">(${team.distance}km)</span>
+            </button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    // Team Management Functions
+    function updateTeamMarker(teamId, data) {
+      const position = { lat: data.latitude, lng: data.longitude };
+      
+      if (teamMarkers[teamId]) {
+        // Update existing marker
+        teamMarkers[teamId].marker.setPosition(position);
+        teamMarkers[teamId].infowindow.setContent(createTeamInfoWindow(data));
+      } else {
+        // Create new marker
+        const markerColor = getTeamMarkerColor(data.teamType);
+        
+        const marker = new google.maps.Marker({
+          position: position,
           map: map,
-          title: data.type
+          title: `${data.teamType || 'Response'} Team: ${teamId}`,
+          icon: {
+            url: `https://maps.google.com/mapfiles/ms/icons/${markerColor}-dot.png`,
+            scaledSize: new google.maps.Size(32, 32)
+          }
         });
-
+        
         const infowindow = new google.maps.InfoWindow({
-          content: `<b>${data.type}</b><br>Latitude: ${data.latitude}<br>Longitude: ${data.longitude}`
+          content: createTeamInfoWindow(data)
         });
-
+        
         marker.addListener('click', () => {
           infowindow.open(map, marker);
           map.setZoom(15);
           map.panTo(marker.getPosition());
         });
-
-        // Store the marker with its ID and data
-        markers[alertId] = {
-          marker: marker,
-          infowindow: infowindow,
-          data: data
-        };
-
-        // Auto-open popup
-        infowindow.open(map, marker);
-
-        // Add to Alerts List with assign buttons
-        const alertsList = document.getElementById('alertsList');
-        const item = document.createElement('div');
-        item.className = 'alert-item';
-        item.dataset.id = alertId;
         
-        item.innerHTML = `
-          <b>Type:</b> ${data.type} <br>
-          <b>Lat:</b> ${data.latitude.toFixed(4)} <br>
-          <b>Lng:</b> ${data.longitude.toFixed(4)} 
-          <div class="alert-time">${new Date().toLocaleTimeString()}</div>
-          <div class="assign-options" id="assign-${alertId}">
-            <button class="assign-btn" onclick="assignEmergency('${alertId}', 'Team-A')">Assign to Team-A</button>
+        teamMarkers[teamId] = { marker, infowindow };
+      }
+    }
+
+    function updateTeamsList() {
+      const container = document.getElementById('teams-list');
+      
+      if (Object.keys(teams).length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-8">No teams online</p>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      Object.values(teams).forEach(team => {
+        const item = createTeamListItem(team);
+        container.appendChild(item);
+      });
+    }
+
+    function createTeamListItem(team) {
+      const item = document.createElement('div');
+      item.className = `team-item ${team.status}`;
+      item.dataset.teamId = team.id;
+      
+      const performance = teamPerformance[team.id] || { completedCases: 0, averageResponseTime: 0 };
+      
+      item.innerHTML = `
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center space-x-2">
+            <span class="text-lg">${getTeamTypeEmoji(team.teamType)}</span>
+            <div>
+              <div class="font-bold text-blue-600">${team.id}</div>
+              <div class="text-xs text-gray-600">${team.teamType || 'General'}</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="status-badge ${getStatusBadgeClass(team.status)}">
+              ${(team.status || 'available').toUpperCase()}
+            </span>
+            <div class="w-2 h-2 bg-green-500 rounded-full pulse"></div>
+          </div>
+        </div>
+        
+        <div class="text-sm text-gray-600 mb-2">
+          <div><strong>Location:</strong> ${team.position.lat.toFixed(4)}, ${team.position.lng.toFixed(4)}</div>
+          <div class="flex justify-between text-xs mt-1">
+            <span>Cases: ${performance.completedCases}</span>
+            <span>Avg Response: ${performance.averageResponseTime}m</span>
+          </div>
+        </div>
+        
+        <div class="text-xs text-gray-500 text-right">
+          Updated: ${team.lastUpdate.toLocaleTimeString()}
+        </div>
+      `;
+      
+      item.addEventListener('click', () => {
+        focusOnTeam(team.id);
+      });
+      
+      return item;
+    }
+
+    // History Management Functions
+    function addToHistory(emergencyData) {
+      emergencyHistory.unshift(emergencyData);
+      
+      // Limit history to 100 items
+      if (emergencyHistory.length > 100) {
+        emergencyHistory.pop();
+      }
+      
+      updateHistoryDisplay();
+    }
+
+    function updateHistoryDisplay() {
+      const container = document.getElementById('history-list');
+      const filter = document.getElementById('history-filter').value;
+      
+      let filteredHistory = emergencyHistory;
+      if (filter !== 'all') {
+        filteredHistory = emergencyHistory.filter(item => 
+          (item.type || 'other').toLowerCase() === filter
+        );
+      }
+      
+      if (filteredHistory.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-8">No history available</p>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      filteredHistory.forEach(item => {
+        const historyItem = createHistoryListItem(item);
+        container.appendChild(historyItem);
+      });
+    }
+
+    function createHistoryListItem(data) {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      
+      const emergencyType = (data.type || 'other').toLowerCase();
+      
+      item.innerHTML = `
+        <div class="flex items-start justify-between mb-2">
+          <div class="flex items-center space-x-2">
+            <span class="text-lg">${getEmergencyEmoji(emergencyType)}</span>
+            <div>
+              <span class="inline-block px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                ${data.type.toUpperCase()}
+              </span>
+              <span class="status-badge status-completed ml-1">RESOLVED</span>
+            </div>
+          </div>
+          <div class="text-xs text-gray-500 text-right">
+            <div>${new Date(data.timestamp).toLocaleTimeString()}</div>
+            <div class="text-xs text-blue-600">#${(data.emergencyId || '').slice(-6)}</div>
+          </div>
+        </div>
+        
+        <div class="text-sm text-gray-700 mb-2">
+          <div><strong>Location:</strong> ${data.latitude.toFixed(4)}, ${data.longitude.toFixed(4)}</div>
+          <div><strong>Team:</strong> ${data.assignedTeam || 'N/A'}</div>
+          <div><strong>Response Time:</strong> ${data.responseTime || 0} minutes</div>
+        </div>
+        
+        <div class="text-xs text-gray-500">
+          Resolved: ${data.resolvedAt ? new Date(data.resolvedAt).toLocaleString() : 'N/A'}
+        </div>
+      `;
+      
+      return item;
+    }
+
+    function clearHistory() {
+      if (confirm('Are you sure you want to clear the emergency history?')) {
+        emergencyHistory.length = 0;
+        updateHistoryDisplay();
+        showNotification('Emergency history cleared', 'info');
+      }
+    }
+
+    function filterHistory() {
+      updateHistoryDisplay();
+    }
+
+    // Chart Update Functions
+    function updateEmergencyTypesChart() {
+      const data = [
+        dailyStats.emergencyTypes.crime || 0,
+        dailyStats.emergencyTypes.medical || 0,
+        dailyStats.emergencyTypes.fire || 0,
+        dailyStats.emergencyTypes.accident || 0,
+        dailyStats.emergencyTypes.other || 0
+      ];
+      
+      emergencyTypesChart.data.datasets[0].data = data;
+      emergencyTypesChart.update();
+    }
+
+    function updateResponseTimesChart(newResponseTime) {
+      const now = new Date();
+      const timeLabel = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+      
+      if (responseTimesChart.data.labels.length >= 10) {
+        responseTimesChart.data.labels.shift();
+        responseTimesChart.data.datasets[0].data.shift();
+      }
+      
+      responseTimesChart.data.labels.push(timeLabel);
+      responseTimesChart.data.datasets[0].data.push(newResponseTime);
+      responseTimesChart.update();
+    }
+
+    function updateTeamPerformanceDisplay() {
+      const container = document.getElementById('team-performance');
+      
+      if (Object.keys(teamPerformance).length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-center py-4 col-span-3">No performance data available</p>';
+        return;
+      }
+      
+      container.innerHTML = '';
+      
+      // Get top 3 performing teams
+      const topTeams = Object.entries(teamPerformance)
+        .sort(([,a], [,b]) => b.completedCases - a.completedCases)
+        .slice(0, 3);
+      
+      topTeams.forEach(([teamId, performance], index) => {
+        const card = document.createElement('div');
+        card.className = 'bg-white rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow';
+        
+        const team = teams[teamId];
+        const ranking = ['🥇', '🥈', '🥉'][index] || '🏅';
+        
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="text-xl">${ranking}</span>
+              <div>
+                <div class="font-bold text-gray-900">${teamId}</div>
+                <div class="text-xs text-gray-500">${team ? team.teamType : 'Unknown'} Team</div>
+              </div>
+            </div>
+            <span class="status-badge ${team ? getStatusBadgeClass(team.status) : 'status-offline'}">
+              ${team ? (team.status || 'unknown').toUpperCase() : 'OFFLINE'}
+            </span>
+          </div>
+          
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-gray-600">Cases Resolved:</span>
+              <span class="font-semibold text-green-600">${performance.completedCases}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Avg Response:</span>
+              <span class="font-semibold text-blue-600">${performance.averageResponseTime}m</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-gray-600">Assignments:</span>
+              <span class="font-semibold text-purple-600">${performance.totalAssignments}</span>
+            </div>
           </div>
         `;
         
-        // Add click event to the alert item (excluding buttons)
-        item.addEventListener('click', (e) => {
-          if (e.target.tagName !== 'BUTTON') {
-            const markerInfo = markers[alertId];
-            if (markerInfo) {
-              map.setZoom(16);
-              map.panTo(markerInfo.marker.getPosition());
-              markerInfo.infowindow.open(map, markerInfo.marker);
-            }
-          }
-        });
-        
-        alertsList.prepend(item);
-      });
-      
-      // Listen for team location updates
-      socket.on('teamLocationUpdate', (data) => {
-        console.log('📍 Team Location Update Received:', data);
-        
-        const teamId = data.teamId;
-        const position = { lat: data.latitude, lng: data.longitude };
-        
-        // Store team info
-        teams[teamId] = {
-          id: teamId,
-          position: position,
-          lastUpdate: new Date()
-        };
-        
-        // Check if we already have a marker for this team
-        if (teamMarkers[teamId]) {
-          // Update existing marker position
-          teamMarkers[teamId].marker.setPosition(position);
-          
-          // Update info window content
-          teamMarkers[teamId].infowindow.setContent(
-            `<b>Team: ${teamId}</b><br>` +
-            `Latitude: ${data.latitude}<br>` +
-            `Longitude: ${data.longitude}<br>` +
-            `Updated: ${new Date().toLocaleTimeString()}`
-          );
-          
-          // Update the team item in the list
-          const teamItem = document.querySelector(`.team-item[data-id="${teamId}"]`);
-          if (teamItem) {
-            teamItem.querySelector('.team-time').textContent = new Date().toLocaleTimeString();
-            teamItem.querySelector('.team-lat').textContent = data.latitude.toFixed(4);
-            teamItem.querySelector('.team-lng').textContent = data.longitude.toFixed(4);
-          }
-        } else {
-          // Create a new marker for this team
-          const marker = new google.maps.Marker({
-            position: position,
-            map: map,
-            title: `Team: ${teamId}`,
-            icon: {
-              url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-              scaledSize: new google.maps.Size(32, 32)
-            }
-          });
-          
-          const infowindow = new google.maps.InfoWindow({
-            content: `<b>Team: ${teamId}</b><br>` +
-                    `Latitude: ${data.latitude}<br>` +
-                    `Longitude: ${data.longitude}<br>` +
-                    `Updated: ${new Date().toLocaleTimeString()}`
-          });
-          
-          marker.addListener('click', () => {
-            infowindow.open(map, marker);
-            map.setZoom(15);
-            map.panTo(marker.getPosition());
-          });
-          
-          // Store the team marker
-          teamMarkers[teamId] = {
-            marker: marker,
-            infowindow: infowindow
-          };
-          
-          // Add to Teams List
-          const teamsList = document.getElementById('teamsList');
-          const item = document.createElement('div');
-          item.className = 'team-item';
-          item.dataset.id = teamId;
-          item.innerHTML = `
-            <b>Team:</b> ${teamId} <br>
-            <b>Lat:</b> <span class="team-lat">${data.latitude.toFixed(4)}</span> <br>
-            <b>Lng:</b> <span class="team-lng">${data.longitude.toFixed(4)}</span>
-            <div class="team-time">${new Date().toLocaleTimeString()}</div>
-          `;
-          
-          // Add click event to center map on team
-          item.addEventListener('click', () => {
-            map.setZoom(16);
-            map.panTo(marker.getPosition());
-            infowindow.open(map, marker);
-          });
-          
-          teamsList.appendChild(item);
-        }
-      });
-      
-      // Listen for assignment confirmations
-      socket.on('assignmentConfirmed', (data) => {
-        console.log('✅ Assignment confirmed:', data);
+        container.appendChild(card);
       });
     }
+
+    // Utility Functions
+    function generateUniqueId() {
+      return `emer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    }
+
+    function getEmergencyIcon(type) {
+      const icons = {
+        crime: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png',
+        medical: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png',
+        fire: 'https://maps.google.com/mapfiles/ms/icons/orange-dot.png',
+        accident: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+        other: 'https://maps.google.com/mapfiles/ms/icons/purple-dot.png'
+      };
+      return icons[type] || icons.other;
+    }
+
+    function getEmergencyEmoji(type) {
+      const emojis = {
+        crime: '🚔',
+        medical: '🚑',
+        fire: '🚒',
+        accident: '🚗',
+        other: '🚨'
+      };
+      return emojis[type] || emojis.other;
+    }
+
+    function getTeamTypeEmoji(teamType) {
+      const emojis = {
+        police: '👮',
+        fire: '🚒',
+        ambulance: '🚑',
+        paramedic: '⚕️'
+      };
+      return emojis[(teamType || '').toLowerCase()] || '👨‍💼';
+    }
+
+    function getTeamMarkerColor(teamType) {
+      const colors = {
+        police: 'blue',
+        fire: 'orange',
+        ambulance: 'green',
+        paramedic: 'green'
+      };
+      return colors[(teamType || '').toLowerCase()] || 'blue';
+    }
+
+    function getPriorityClass(priority) {
+      const classes = {
+        critical: 'priority-critical',
+        high: 'priority-high',
+        medium: 'priority-medium',
+        low: 'priority-low'
+      };
+      return classes[(priority || 'high').toLowerCase()] || classes.high;
+    }
+
+    function getStatusBadgeClass(status) {
+      const classes = {
+        available: 'status-active',
+        active: 'status-active',
+        busy: 'status-busy',
+        offline: 'status-offline',
+        completed: 'status-completed'
+      };
+      return classes[(status || 'available').toLowerCase()] || classes.available;
+    }
+
+    function createEmergencyInfoWindow(data, alertId) {
+      return `
+        <div class="p-4 min-w-72">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center space-x-2">
+              <span class="text-2xl">${getEmergencyEmoji((data.type || 'other').toLowerCase())}</span>
+              <div>
+                <h3 class="font-bold text-red-600 text-lg">${data.type.toUpperCase()} EMERGENCY</h3>
+                <span class="inline-block px-2 py-1 rounded text-xs font-medium ${getPriorityClass(data.priority)}">
+                  ${(data.priority || 'HIGH').toUpperCase()} PRIORITY
+                </span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="space-y-2 text-sm text-gray-700 mb-4">
+            <div><strong>Emergency ID:</strong> #${alertId.slice(-8)}</div>
+            <div><strong>Location:</strong> ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}</div>
+            <div><strong>Reported:</strong> ${new Date(data.timestamp).toLocaleString()}</div>
+            <div><strong>Status:</strong> <span class="font-semibold text-red-600">ACTIVE</span></div>
+          </div>
+          
+          <div class="border-t pt-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold mb-2">Available Response Teams</div>
+            <div class="space-y-1">
+              ${(data.nearbyTeams || []).map(team => `
+                <div class="flex items-center justify-between text-sm">
+                  <span>${getTeamTypeEmoji(team.teamType)} ${team.teamId}</span>
+                  <span class="text-blue-600 font-semibold">${team.distance}km away</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function createTeamInfoWindow(data) {
+      const performance = teamPerformance[data.teamId] || { completedCases: 0, averageResponseTime: 0 };
+      
+      return `
+        <div class="p-4 min-w-64">
+          <div class="flex items-center space-x-3 mb-3">
+            <span class="text-2xl">${getTeamTypeEmoji(data.teamType)}</span>
+            <div>
+              <h3 class="font-bold text-blue-600 text-lg">Team ${data.teamId}</h3>
+              <span class="inline-block px-2 py-1 rounded text-xs font-medium ${getStatusBadgeClass(data.status)}">
+                ${(data.status || 'AVAILABLE').toUpperCase()}
+              </span>
+            </div>
+          </div>
+          
+          <div class="space-y-2 text-sm text-gray-700 mb-4">
+            <div><strong>Type:</strong> ${data.teamType || 'General Response'}</div>
+            <div><strong>Location:</strong> ${data.latitude.toFixed(6)}, ${data.longitude.toFixed(6)}</div>
+            <div><strong>Last Update:</strong> ${new Date().toLocaleString()}</div>
+          </div>
+          
+          <div class="border-t pt-3">
+            <div class="text-xs text-gray-500 uppercase font-semibold mb-2">Performance Stats</div>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div class="text-center">
+                <div class="font-bold text-green-600">${performance.completedCases}</div>
+                <div class="text-xs text-gray-500">Cases Resolved</div>
+              </div>
+              <div class="text-center">
+                <div class="font-bold text-blue-600">${performance.averageResponseTime}m</div>
+                <div class="text-xs text-gray-500">Avg Response</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // Emergency Assignment Functions
+    function assignEmergency(emergencyId, teamId) {
+      console.log(`Assigning emergency ${emergencyId} to team ${teamId}`);
+      
+      const emergency = emergencies[emergencyId];
+      if (!emergency) {
+        console.error('Emergency not found:', emergencyId);
+        showNotification('Emergency not found!', 'error');
+        return;
+      }
+      
+      const assignmentData = {
+        teamIds: [teamId],
+        emergencyId: emergencyId,
+        latitude: emergency.data.latitude,
+        longitude: emergency.data.longitude,
+        type: emergency.data.type
+      };
+      
+      console.log('Emitting assignment:', assignmentData);
+      socket.emit('assignEmergency', assignmentData);
+      
+      // Update UI to show assignment in progress
+      updateAssignmentUI(emergencyId, 'assigning', teamId);
+      
+      showNotification(`Assigning emergency to ${teamId}...`, 'info');
+    }
+
+    function updateAssignmentUI(emergencyId, status, teamId) {
+      const teamsContainer = document.getElementById(`teams-${emergencyId}`);
+      if (!teamsContainer) return;
+      
+      switch (status) {
+        case 'assigning':
+          teamsContainer.innerHTML = `
+            <div class="flex items-center justify-center text-blue-600 p-2">
+              <div class="loading-spinner mr-2"></div>
+              <span>Assigning to ${teamId}...</span>
+            </div>
+          `;
+          break;
+          
+        case 'assigned':
+          teamsContainer.innerHTML = `
+            <div class="flex items-center text-green-600 font-semibold p-2">
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              Assigned to ${teamId}
+            </div>
+          `;
+          break;
+          
+        case 'error':
+          teamsContainer.innerHTML = `
+            <div class="text-red-600 text-sm p-2">
+              Assignment failed. Please try again.
+            </div>
+          `;
+          break;
+      }
+    }
+
+    function updateEmergencyAssignmentStatus(data) {
+      if (data.assignedTeams && data.assignedTeams.length > 0) {
+        data.assignedTeams.forEach(teamId => {
+          // Find and update emergency assignment display
+          Object.keys(emergencies).forEach(emergencyId => {
+            updateAssignmentUI(emergencyId, 'assigned', teamId);
+          });
+        });
+      }
+    }
+
+    function resetAssignmentUI() {
+      document.querySelectorAll('.nearby-teams').forEach(container => {
+        if (container.innerHTML.includes('Assigning...')) {
+          container.innerHTML = `
+            <div class="text-red-600 text-sm p-2">
+              Assignment failed. Please try again.
+            </div>
+          `;
+        }
+      });
+    }
+
+    // Map Control Functions
+    function refreshMapView() {
+      // Refresh all markers and data
+      Object.values(emergencies).forEach(emergency => {
+        emergency.marker.setVisible(true);
+      });
+      
+      Object.values(teamMarkers).forEach(team => {
+        team.marker.setVisible(true);
+      });
+      
+      showNotification('Map refreshed', 'info');
+    }
+
+    function centerMapToGhana() {
+      map.setCenter({ lat: 5.6037, lng: -0.1870 });
+      map.setZoom(7);
+      showNotification('Map centered to Ghana', 'info');
+    }
+
+    function focusOnEmergency(emergencyId) {
+      const emergency = emergencies[emergencyId];
+      if (emergency) {
+        map.setZoom(16);
+        map.panTo(emergency.marker.getPosition());
+        emergency.infowindow.open(map, emergency.marker);
+      }
+    }
+
+    function focusOnTeam(teamId) {
+      const team = teamMarkers[teamId];
+      if (team) {
+        map.setZoom(16);
+        map.panTo(team.marker.getPosition());
+        team.infowindow.open(map, team.marker);
+      }
+    }
+
+    // Notification System
+    function showNotification(message, type = 'info', duration = 4000) {
+      const notification = document.createElement('div');
+      notification.className = `fixed top-20 right-6 px-6 py-4 rounded-lg shadow-lg z-50 text-white font-medium transform translate-x-full transition-transform duration-300`;
+      
+      const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+      };
+      
+      notification.classList.add(colors[type] || colors.info);
+      
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+      };
+      
+      notification.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <span>${icons[type] || icons.info}</span>
+          <span>${message}</span>
+          <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white hover:text-gray-200">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      // Animate in
+      setTimeout(() => {
+        notification.classList.remove('translate-x-full');
+      }, 100);
+      
+      // Auto remove
+      setTimeout(() => {
+        notification.classList.add('translate-x-full');
+        setTimeout(() => {
+          if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+          }
+        }, 300);
+      }, duration);
+    }
+
+    // Sound Alert System
+    function playAlertSound() {
+      try {
+        // Create audio context for emergency alert sound
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+        oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+        oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (error) {
+        console.log('Could not play alert sound:', error);
+      }
+    }
+
+    // Initialize everything when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      initApp();
+    });
+
+    // Global function for button clicks (needed for onclick handlers)
+    window.assignEmergency = assignEmergency;
+    window.switchTab = switchTab;
   </script>
-   <script async
-   src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDim4GDvBKQSRmV8RGQWbGx3LyecuRFUAk&callback=initMap">
- </script>
+
+  <script async
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDim4GDvBKQSRmV8RGQWbGx3LyecuRFUAk&callback=initApp">
+  </script>
+
 </body>
 </html>
