@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, AlertCircle, CheckCircle2, Eye, EyeOff, LogIn } from 'lucide-react';
 
-const TeamLogin = () => {
+const TeamLogin = ({ onLoginSuccess, onNavigateToSignup }) => {
   const [teamId, setTeamId] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -10,6 +10,7 @@ const TeamLogin = () => {
   const [focusedInput, setFocusedInput] = useState(null);
   const [hoveredButton, setHoveredButton] = useState(false);
   const [hoveredLink, setHoveredLink] = useState(false);
+  const [initializing, setInitializing] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,26 +32,75 @@ const TeamLogin = () => {
       const data = await response.json();
       console.log('Login successful:', data);
 
-      // Store team data (Note: In production, avoid localStorage for sensitive data)
-      // For demo purposes, we'll simulate this
-      const mockTeamData = { teamId, teamType: 'fire' };
-      console.log('Team authenticated:', mockTeamData);
+      // Store team data in sessionStorage
+      const teamData = { 
+        teamId, 
+        teamType: data.teamType || 'fire',
+        token: data.token,
+        loginTime: new Date().toISOString()
+      };
+      sessionStorage.setItem('teamData', JSON.stringify(teamData));
 
-      // Simulate navigation success
+      // Show initializing message
+      setLoading(false);
+      setInitializing(true);
+      
+      // Simulate system initialization
       setTimeout(() => {
-        setError('');
-        alert('Login successful! Redirecting to dashboard...');
-        // navigate('/'); // Uncomment when using router
-      }, 1000);
+        setInitializing(false);
+        
+        // FIXED: Proper navigation handling
+        if (onLoginSuccess) {
+          // This is the preferred method - let parent component handle navigation
+          onLoginSuccess(teamData);
+        } else {
+          // Fallback: If no onLoginSuccess callback, try different navigation methods
+          console.warn('No onLoginSuccess callback provided, using fallback navigation');
+          
+          // Method 1: Try React Router if available
+          if (window.history && window.history.pushState) {
+            window.history.pushState({}, '', '/dashboard');
+            // Trigger a popstate event to notify React Router
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }
+          
+          // Method 2: If that doesn't work, try hash routing
+          if (!document.querySelector('[data-react-router-rendered]')) {
+            window.location.hash = '#/dashboard';
+          }
+          
+          // Method 3: Last resort - full page reload to dashboard
+          // Only use this if the above methods don't work
+          // Uncomment the line below if needed:
+          // window.location.href = '/dashboard';
+        }
+      }, 2000);
 
     } catch (error) {
       console.error('Login error:', error);
       setError(error.message || 'Invalid credentials. Please try again.');
-    } finally {
       setLoading(false);
+      setInitializing(false); // Reset initializing state on error
     }
   };
 
+  const handleSignUpClick = () => {
+    if (onNavigateToSignup) {
+      onNavigateToSignup();
+    } else {
+      // Fallback navigation
+      console.warn('No onNavigateToSignup callback provided, using fallback navigation');
+      
+      // Try hash routing first
+      if (window.location.hash !== undefined) {
+        window.location.hash = '#/teamsignup';
+      } else {
+        window.location.href = '/teamsignup';
+      }
+    }
+  };
+
+  // ... rest of your styles object remains the same ...
   const styles = {
     container: {
       minHeight: '100vh',
@@ -221,6 +271,35 @@ const TeamLogin = () => {
       marginRight: '0.75rem',
       animation: 'spin 1s linear infinite'
     },
+    initializingContainer: {
+      textAlign: 'center',
+      padding: '2rem'
+    },
+    initializingTitle: {
+      fontSize: '1.25rem',
+      fontWeight: '600',
+      color: '#374151',
+      margin: '1rem 0 0.5rem 0'
+    },
+    initializingSubtitle: {
+      fontSize: '0.875rem',
+      color: '#6b7280',
+      margin: 0
+    },
+    progressBar: {
+      width: '100%',
+      height: '0.5rem',
+      backgroundColor: '#e5e7eb',
+      borderRadius: '0.25rem',
+      overflow: 'hidden',
+      marginTop: '1.5rem'
+    },
+    progressFill: {
+      height: '100%',
+      backgroundColor: '#ef4444',
+      borderRadius: '0.25rem',
+      animation: 'progress 2s ease-out forwards'
+    },
     errorContainer: {
       marginBottom: '1.5rem',
       padding: '1rem',
@@ -284,6 +363,51 @@ const TeamLogin = () => {
       fontWeight: '500'
     }
   };
+
+  // Show initializing screen
+  if (initializing) {
+    return (
+      <div style={styles.container}>
+        <style>
+          {`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+            @keyframes progress {
+              0% { width: 0%; }
+              100% { width: 100%; }
+            }
+            @keyframes pulse {
+              0%, 100% { opacity: 0.7; }
+              50% { opacity: 1; }
+            }
+          `}
+        </style>
+        
+        <div style={styles.mainWrapper}>
+          <div style={styles.card}>
+            <div style={styles.header}>
+              <div style={styles.headerTitle}>
+                <Shield size={32} color="white" style={{marginRight: '0.75rem', animation: 'pulse 2s ease-in-out infinite'}} />
+                <h1 style={styles.headerText}>Emergency SOS</h1>
+              </div>
+              <p style={styles.headerSubtext}>System Initialization</p>
+            </div>
+            
+            <div style={styles.initializingContainer}>
+              <CheckCircle2 size={64} color="#ef4444" style={{animation: 'pulse 1.5s ease-in-out infinite'}} />
+              <h2 style={styles.initializingTitle}>Initializing Emergency Response System</h2>
+              <p style={styles.initializingSubtitle}>Setting up your secure dashboard...</p>
+              
+              <div style={styles.progressBar}>
+                <div style={styles.progressFill}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={styles.container}>
@@ -429,13 +553,7 @@ const TeamLogin = () => {
               }}
               onMouseEnter={() => setHoveredLink(true)}
               onMouseLeave={() => setHoveredLink(false)}
-              onClick={() => {
-                // If you're using React Router, uncomment the line below:
-                // navigate('/teamsignup');
-                
-                // For now, you can use window.location for navigation:
-                window.location.href = '/teamsignup';
-              }}
+              onClick={handleSignUpClick}
             >
               Sign Up
             </button>
